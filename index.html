@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Computer Education - Complete ERP Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f4fe', 100: '#dbe5fc', 500: '#1d4ed8',
+                            600: '#1e40af', 700: '#1d3557', 800: '#111827', accent: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .dark .glass-panel { background: rgba(30, 41, 59, 0.95); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #1d4ed8; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+        .no-select { user-select: none; -webkit-user-select: none; }
+        
+        /* Admin Sidebar Styles */
+        .sidebar-menu-item { padding: 0.75rem 1rem; margin-bottom: 0.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; color: #475569; }
+        .sidebar-menu-item:hover { background-color: #f1f5f9; color: #1d4ed8; }
+        .dark .sidebar-menu-item { color: #cbd5e1; }
+        .dark .sidebar-menu-item:hover { background-color: #334155; color: #60a5fa; }
+        .sidebar-menu-item.active { background-color: #eff6ff; color: #1d4ed8; }
+        .dark .sidebar-menu-item.active { background-color: #1e3a8a; color: #60a5fa; }
+        
+        .sub-menu { padding-left: 2.5rem; margin-top: 0.25rem; display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
+        .sub-menu-item { font-size: 0.75rem; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; color: #64748b; display: flex; align-items: center; gap: 0.5rem;}
+        .sub-menu-item:hover { color: #1d4ed8; background-color: #f8fafc; }
+        .dark .sub-menu-item { color: #94a3b8; }
+        .dark .sub-menu-item:hover { color: #60a5fa; background-color: #0f172a; }
+        .sub-menu-item.active { color: #1d4ed8; font-weight: 700; background-color: #f8fafc; }
+        .dark .sub-menu-item.active { color: #60a5fa; background-color: #0f172a; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-50 dark:bg-slate-900 text-gray-800 dark:text-gray-100 transition-colors duration-300">
+
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // 🔥 Firebase Database URL
+        const FIREBASE_URL = "https://excel-computer-education-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+        function App() {
+            // ---- GLOBAL STATES ----
+            const [isLoadingData, setIsLoadingData] = useState(true);
+            const [users, setUsers] = useState([]);
+            const [exams, setExams] = useState([]);
+            const [attempts, setAttempts] = useState([]);
+            const [courses, setCourses] = useState([]); 
+            const [payments, setPayments] = useState([]);
+            const [loginHistory, setLoginHistory] = useState([]);
+            
+            const [appSettings, setAppSettings] = useState({
+                logo: 'IMG-20200625-WA0007-removebg-preview2-2.png',
+                title: 'Excel Computer Education',
+                address: 'Shiv Vihar, Airport Road, Dabok, Udaipur',
+                phone: '8875609703, 7976803471',
+                marquee: 'Admission Open: RS-CIT, Tally, Library',
+                adminId: 'Excelcomputereducation',
+                adminPass: 'Kishan@64'
+            });
+
+            const [currentUser, setCurrentUser] = useState(null);
+            const [currentPage, setCurrentPage] = useState('login'); 
+            const [toasts, setToasts] = useState([]);
+            const [isDarkMode, setIsDarkMode] = useState(false);
+
+            // ---- AUTH STATES ----
+            const [loginRole, setLoginRole] = useState('student');
+            const [loginMobile, setLoginMobile] = useState('');
+            const [loginPass, setLoginPass] = useState('');
+            
+            const initRegData = { 
+                name: '', fatherName: '', mobile: '', gender: 'Male', dob: '', 
+                course: '', courseCode: '',
+                village: '', tehsil: '', dist: '', state: 'Rajasthan', pincode: '',
+                password: '', cPassword: '', photo: '' 
+            };
+            const [regData, setRegData] = useState(initRegData);
+
+            // ---- ADMIN HIERARCHY STATES ----
+            const [activeAdminMenu, setActiveAdminMenu] = useState('dashboard');
+            const [activeAdminSubMenu, setActiveAdminSubMenu] = useState('');
+            const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+            
+            const [examForm, setExamForm] = useState({ title: '', course: '', month: 'January', year: '2026', subject: '', duration: 30, passingPercentage: 40, status: 'Active', instructions: ''});
+            const [questionsList, setQuestionsList] = useState([]);
+            const [curQuestionText, setCurQuestionText] = useState('');
+            const [curOptions, setCurOptions] = useState({ A: '', B: '', C: '', D: '' });
+            const [curCorrect, setCurCorrect] = useState('');
+            const [curImage, setCurImage] = useState('');
+            const [editExamId, setEditExamId] = useState(null);
+            
+            const [filters, setFilters] = useState({ search: '', month: 'all', year: 'all', status: 'all', percentage: 'all', course: 'all', dateFrom: '', dateTo: '', sortBy: 'dateDesc' });
+            const [studentSearch, setStudentSearch] = useState('');
+            
+            const [newCourse, setNewCourse] = useState({ name: '', code: '', requireCode: false, fee: '' });
+            const [editingStudent, setEditingStudent] = useState(null); 
+            
+            // Fees & Discount State
+            const [feeModal, setFeeModal] = useState(null);
+            const [feeAmount, setFeeAmount] = useState('');
+            const [feeMode, setFeeMode] = useState('Cash');
+            const [editFeeModal, setEditFeeModal] = useState(null);
+
+            // Library State
+            const librarySeats = Array.from({length: 100}, (_, i) => 'A' + (i+1));
+            const [adminSeatModal, setAdminSeatModal] = useState(null);
+
+            // Messages & Templates
+            const [msgTemplate, setMsgTemplate] = useState("Hello [Name],\nYour fee amount of Rs. [Due] is pending for the [Course] course. Please pay as soon as possible.\nRegards,\nExcel Computer Education");
+            const [birthdayMsgTemplate, setBirthdayMsgTemplate] = useState("Happy Birthday [Name]! 🎉🎂\nWishing you a fantastic day and a successful year ahead!\nRegards,\nExcel Computer Education");
+
+            // Profile Edit (Admin)
+            const [adminProfileEdit, setAdminProfileEdit] = useState({ adminId: '', adminPass: '' });
+
+            // ---- STUDENT STATES ----
+            const [activeStudentTab, setActiveStudentTab] = useState('dashboard');
+            const [activeExam, setActiveExam] = useState(null);
+            const [examQs, setExamQs] = useState([]);
+            const [curQIdx, setCurQIdx] = useState(0);
+            const [selAns, setSelAns] = useState({});
+            const [timeLeft, setTimeLeft] = useState(0);
+            const [warnings, setWarnings] = useState(0);
+            const [lastAttemptId, setLastAttemptId] = useState(null);
+            const timerRef = useRef(null);
+            
+            const [bookingSeat, setBookingSeat] = useState(null); 
+            const [joiningDate, setJoiningDate] = useState('');
+
+            // Helper Functions
+            const handleImageError = (e) => { e.target.src = 'https://via.placeholder.com/150?text=Logo'; };
+            const showToast = (msg, type = 'success') => {
+                const id = Date.now(); setToasts(p => [...p, {id, msg, type}]);
+                setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4000);
+            };
+            const formatTime = (seconds) => {
+                if(!seconds && seconds !== 0) return "N/A";
+                const m = Math.floor(seconds / 60); const s = seconds % 60;
+                return `${m}m ${s}s`;
+            };
+
+            // ---- INIT FETCH ----
+            useEffect(() => {
+                const init = async () => {
+                    try {
+                        const res = await fetch(`${FIREBASE_URL}/.json`);
+                        const data = await res.json() || {};
+                        
+                        setUsers(data.users ? Object.values(data.users) : []); 
+                        setExams(data.exams ? Object.values(data.exams) : []); 
+                        setAttempts(data.attempts ? Object.values(data.attempts) : []);
+                        setPayments(data.payments ? Object.values(data.payments) : []);
+                        setLoginHistory(data.loginHistory ? Object.values(data.loginHistory) : []);
+                        
+                        const dbCourses = data.courses ? Object.values(data.courses) : [
+                            {name: 'RS-CIT', code: '', requireCode: false, fee: 3500}, 
+                            {name: 'Tally Prime & Advance', code: '', requireCode: false, fee: 4000},
+                            {name: 'Library', code: '', requireCode: false, fee: 500}
+                        ];
+                        setCourses(dbCourses);
+
+                        if(data.settings) {
+                            const mergedSettings = {...appSettings, ...data.settings};
+                            setAppSettings(mergedSettings);
+                            setAdminProfileEdit({adminId: mergedSettings.adminId, adminPass: mergedSettings.adminPass});
+                            if(data.settings.msgTemplate) setMsgTemplate(data.settings.msgTemplate);
+                            if(data.settings.birthdayMsgTemplate) setBirthdayMsgTemplate(data.settings.birthdayMsgTemplate);
+                        } else {
+                            setAdminProfileEdit({adminId: appSettings.adminId, adminPass: appSettings.adminPass});
+                        }
+                        
+                    } catch(e) { showToast("Could not connect to database.", "error"); }
+                    
+                    setIsLoadingData(false);
+                    setCurrentPage('login');
+                    if (localStorage.getItem('rscit_theme') === 'dark') { setIsDarkMode(true); document.documentElement.classList.add('dark'); }
+                };
+                init();
+            }, []);
+
+            const toggleTheme = () => {
+                const newMode = !isDarkMode; setIsDarkMode(newMode);
+                if(newMode){ document.documentElement.classList.add('dark'); localStorage.setItem('rscit_theme', 'dark'); }
+                else { document.documentElement.classList.remove('dark'); localStorage.setItem('rscit_theme', 'light'); }
+            };
+
+            // ---- REGISTRATION LOGIC ----
+            const handlePhotoUpload = (e, targetSetter) => {
+                const file = e.target.files[0];
+                if(file) {
+                    if(file.size > 500000) return showToast("Photo must be less than 500KB", "error");
+                    const r = new FileReader(); r.onloadend = () => targetSetter(prev => ({...prev, photo: r.result})); r.readAsDataURL(file);
+                }
+            };
+
+            const handleRegister = async (e) => {
+                e.preventDefault();
+                if(regData.mobile.length !== 10) return showToast("10-Digit WhatsApp Mobile Required", "error");
+                if(regData.password !== regData.cPassword) return showToast("Passwords do not match", "error");
+                if(users.some(u => u.mobile === regData.mobile)) return showToast("Mobile Already Registered!", "error");
+                if(!regData.course) return showToast("Please select a course", "error");
+
+                const selCourseObj = courses.find(c => c.name === regData.course);
+                if(selCourseObj && selCourseObj.requireCode && regData.courseCode !== selCourseObj.code) {
+                    return showToast("Invalid Course Code! Please enter correct code.", "error");
+                }
+
+                try {
+                    let lastCodeRes = await fetch(`${FIREBASE_URL}/metadata/lastStudentCode.json`);
+                    let lastCode = await lastCodeRes.json();
+                    if(!lastCode || lastCode < 2000) lastCode = 2000;
+                    const newCode = lastCode + 1;
+
+                    const newUser = { 
+                        ...regData, 
+                        studentCode: newCode, role: 'student', active: 1, 
+                        baseFee: selCourseObj ? (selCourseObj.fee || 0) : 0, 
+                        discount: 0,
+                        totalFee: selCourseObj ? (selCourseObj.fee || 0) : 0, 
+                        paidFee: 0,
+                        createdAt: new Date().toISOString() 
+                    };
+                    delete newUser.cPassword;
+
+                    await fetch(`${FIREBASE_URL}/users/${newUser.mobile}.json`, { method: 'PUT', body: JSON.stringify(newUser) });
+                    await fetch(`${FIREBASE_URL}/metadata/lastStudentCode.json`, { method: 'PUT', body: JSON.stringify(newCode) });
+                    
+                    setUsers([...users, newUser]);
+                    showToast(`Registration Complete! Your Student Code is ${newCode}`);
+                    setCurrentPage('login'); setLoginMobile(regData.mobile); setRegData(initRegData);
+                } catch (error) { showToast("Registration Error!", "error"); }
+            };
+
+            const recordLogin = async (user) => {
+                const entry = { id: 'LOG_' + Date.now(), name: user.name, mobile: user.mobile, role: user.role, time: new Date().toLocaleString(), timestamp: Date.now() };
+                await fetch(`${FIREBASE_URL}/loginHistory/${entry.id}.json`, { method: 'PUT', body: JSON.stringify(entry) });
+                setLoginHistory([...loginHistory, entry]);
+            };
+
+            // ---- LOGIN LOGIC ----
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (loginRole === 'admin') {
+                    if (loginMobile === appSettings.adminId && loginPass === appSettings.adminPass) {
+                        setCurrentUser({ name: "Admin Office", role: "admin", mobile: "admin" }); 
+                        setCurrentPage('admin-dashboard'); setActiveAdminMenu('dashboard'); setActiveAdminSubMenu('');
+                        recordLogin({name: 'Admin', mobile: 'admin', role: 'admin'});
+                        showToast("Welcome to Admin Dashboard!");
+                    } else showToast("Invalid Admin ID or Password", "error");
+                } else {
+                    const u = users.find(x => x.mobile === loginMobile && x.password === loginPass);
+                    if (u) {
+                        if(u.active == 0 || u.active === false) return showToast("Account Deactivated by Admin", "error");
+                        setCurrentUser(u); setCurrentPage('student-dashboard'); setActiveStudentTab('dashboard');
+                        recordLogin(u);
+                        showToast(`Welcome back, ${u.name}!`);
+                    } else showToast("Invalid Mobile or Password", "error");
+                }
+            };
+            const handleLogout = () => { setCurrentUser(null); setCurrentPage('login'); setLoginMobile(''); setLoginPass(''); showToast("Logged out successfully"); };
+
+            // ---- ADMIN SETTINGS & FUNCTIONS ----
+            const saveAppSettings = async () => {
+                const newSettings = {...appSettings, msgTemplate, birthdayMsgTemplate};
+                await fetch(`${FIREBASE_URL}/settings.json`, { method: 'PUT', body: JSON.stringify(newSettings) });
+                showToast("Website Settings Saved!");
+            };
+
+            const handleSiteLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const newSettings = {...appSettings, logo: reader.result};
+                        setAppSettings(newSettings);
+                        await fetch(`${FIREBASE_URL}/settings.json`, { method: 'PUT', body: JSON.stringify(newSettings) });
+                        showToast("Logo updated!");
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleAddCourse = async () => {
+                if(!newCourse.name.trim()) return;
+                const updated = [...courses.filter(c=>c.name !== newCourse.name), {...newCourse, fee: Number(newCourse.fee)||0}];
+                setCourses(updated); setNewCourse({name:'', code:'', requireCode:false, fee:''});
+                await fetch(`${FIREBASE_URL}/courses.json`, { method: 'PUT', body: JSON.stringify(updated) });
+                showToast("Course Saved successfully!");
+            };
+            const editCourseForm = (c) => {
+                setNewCourse({name: c.name, code: c.code||'', requireCode: c.requireCode||false, fee: c.fee||0});
+            };
+
+            const handleDeleteCourse = async (cName) => {
+                if(!confirm(`Delete "${cName}"?`)) return;
+                const updated = courses.filter(c => c.name !== cName); setCourses(updated);
+                await fetch(`${FIREBASE_URL}/courses.json`, { method: 'PUT', body: JSON.stringify(updated) });
+                showToast("Course removed.");
+            };
+
+            const saveAdminProfile = async () => {
+                if(!adminProfileEdit.adminId || !adminProfileEdit.adminPass) return showToast("Fields cannot be empty", "error");
+                const newSettings = {...appSettings, adminId: adminProfileEdit.adminId, adminPass: adminProfileEdit.adminPass};
+                setAppSettings(newSettings);
+                await fetch(`${FIREBASE_URL}/settings.json`, { method: 'PUT', body: JSON.stringify(newSettings) });
+                showToast("Admin Credentials Updated!");
+            };
+
+            const handleSaveStudentEdit = async () => {
+                if(!editingStudent) return;
+                if(editingStudent.password.length < 4) return showToast("Password too short", "error");
+                
+                // Recalculate fee if course changed
+                const selCourseObj = courses.find(c => c.name === editingStudent.course);
+                const base = selCourseObj ? (selCourseObj.fee || 0) : 0;
+                const disc = Number(editingStudent.discount) || 0;
+                editingStudent.baseFee = base;
+                editingStudent.totalFee = base - disc;
+
+                try {
+                    await fetch(`${FIREBASE_URL}/users/${editingStudent.mobile}.json`, { method: 'PUT', body: JSON.stringify(editingStudent) });
+                    setUsers(users.map(u => u.mobile === editingStudent.mobile ? editingStudent : u));
+                    showToast("Student Profile Updated!"); setEditingStudent(null);
+                } catch(e) { showToast("Failed to update student", "error"); }
+            };
+
+            const handleCollectFee = async (e) => {
+                e.preventDefault();
+                const amt = Number(feeAmount);
+                if(amt <= 0) return showToast("Enter valid amount", "error");
+                const targetUser = users.find(u => u.mobile === feeModal.mobile);
+                const updatedPaid = (targetUser.paidFee || 0) + amt;
+                const updatedUser = { ...targetUser, paidFee: updatedPaid };
+                const receipt = { id: 'REC_' + Date.now(), studentMobile: targetUser.mobile, studentName: targetUser.name, course: targetUser.course, amount: amt, mode: feeMode, date: new Date().toLocaleString() };
+
+                try {
+                    await fetch(`${FIREBASE_URL}/users/${targetUser.mobile}.json`, { method: 'PUT', body: JSON.stringify(updatedUser) });
+                    await fetch(`${FIREBASE_URL}/payments/${receipt.id}.json`, { method: 'PUT', body: JSON.stringify(receipt) });
+                    setUsers(users.map(u => u.mobile === targetUser.mobile ? updatedUser : u));
+                    setPayments([...payments, receipt]);
+                    setFeeModal(null); setFeeAmount(''); showToast("Fee Collected!");
+                } catch(e) { showToast("Payment Error", "error"); }
+            };
+
+            const handleSaveEditFee = async (e) => {
+                e.preventDefault();
+                try {
+                    const disc = Number(editFeeModal.discount) || 0;
+                    const finalTotal = (editFeeModal.baseFee || editFeeModal.totalFee || 0) - disc;
+                    const finalObj = {...editFeeModal, totalFee: finalTotal, discount: disc};
+                    
+                    await fetch(`${FIREBASE_URL}/users/${finalObj.mobile}.json`, { method: 'PUT', body: JSON.stringify(finalObj) });
+                    setUsers(users.map(u => u.mobile === finalObj.mobile ? finalObj : u));
+                    setEditFeeModal(null); showToast("Fee Details Updated with Discount!");
+                } catch(e) { showToast("Failed to update fees", "error"); }
+            };
+
+            // ---- ADMIN EXAMS ----
+            const handleAddQuestionManual = () => {
+                if (!curQuestionText || !curOptions.A || !curOptions.B || !curOptions.C || !curOptions.D || !curCorrect) return showToast("Enter question, all options & correct option!", "error");
+                setQuestionsList([...questionsList, { question: curQuestionText, options: [curOptions.A, curOptions.B, curOptions.C, curOptions.D], correct: curCorrect }]);
+                setCurQuestionText(''); setCurOptions({A:'', B:'', C:'', D:''}); setCurCorrect(''); showToast("Question added!");
+            };
+            
+            const handleSaveExam = async () => {
+                if (!examForm.title.trim() || !examForm.course) return showToast("Enter Exam Name & Select Course!", "error");
+                const newExam = { id: editExamId || 'exam_' + Date.now(), ...examForm, questions: questionsList, createdAt: Date.now() };
+                try {
+                    await fetch(`${FIREBASE_URL}/exams/${newExam.id}.json`, { method: 'PUT', body: JSON.stringify(newExam) });
+                    let updatedExams = editExamId ? exams.map(e => e.id === editExamId ? newExam : e) : [...exams, newExam];
+                    setExams(updatedExams); resetExamForm(); setActiveAdminMenu('exams'); setActiveAdminSubMenu('exams-list'); showToast("Exam Saved!");
+                } catch(e) { showToast("Failed to save", "error"); }
+            };
+            const resetExamForm = () => { setEditExamId(null); setExamForm({ title: '', course: '', month: 'January', year: '2026', subject: '', duration: 30, passingPercentage: 40, status: 'Active', instructions: ''}); setQuestionsList([]); };
+            const handleEditExam = (exam) => { setEditExamId(exam.id); setExamForm({...exam}); setQuestionsList(exam.questions||[]); setActiveAdminMenu('exams'); setActiveAdminSubMenu('exams-create'); };
+            const handleDeleteExam = async (id) => { if(confirm("Delete this exam?")) { await fetch(`${FIREBASE_URL}/exams/${id}.json`, { method: 'DELETE' }); setExams(exams.filter(e => e.id !== id)); showToast("Deleted"); } };
+
+            // ---- ADMIN LIBRARY ----
+            const adminAssignSeat = async (e) => {
+                e.preventDefault(); let userToUpdate;
+                if (adminSeatModal.isManual) {
+                    // Update existing manual guest if editing
+                    if (adminSeatModal.occupier && adminSeatModal.occupier.mobile.startsWith('GUEST_')) {
+                        userToUpdate = { ...adminSeatModal.occupier, name: adminSeatModal.manualName, joiningDate: adminSeatModal.joiningDate };
+                    } else {
+                        const tempMobile = "GUEST_" + Date.now();
+                        userToUpdate = { name: adminSeatModal.manualName, mobile: tempMobile, course: 'Library', role: 'student', active: 1, seatNumber: adminSeatModal.seatNumber, joiningDate: adminSeatModal.joiningDate, totalFee: 0, paidFee: 0 };
+                    }
+                } else {
+                    userToUpdate = users.find(u => u.mobile === adminSeatModal.selectedMobile);
+                    if(!userToUpdate) return;
+                    userToUpdate = {...userToUpdate, seatNumber: adminSeatModal.seatNumber, joiningDate: adminSeatModal.joiningDate};
+                }
+                
+                await fetch(`${FIREBASE_URL}/users/${userToUpdate.mobile}.json`, { method: 'PUT', body: JSON.stringify(userToUpdate) });
+                
+                if (adminSeatModal.isManual && !adminSeatModal.occupier) {
+                    setUsers([...users, userToUpdate]);
+                } else {
+                    setUsers(users.map(u => u.mobile === userToUpdate.mobile ? userToUpdate : u));
+                }
+                setAdminSeatModal(null); showToast("Seat Assigned/Updated!");
+            };
+            
+            const adminFreeSeat = async (mobile) => {
+                const userToUpdate = users.find(u => u.mobile === mobile);
+                if(!userToUpdate) return;
+                
+                if(mobile.startsWith('GUEST_')){
+                    await fetch(`${FIREBASE_URL}/users/${mobile}.json`, { method: 'DELETE' });
+                    setUsers(users.filter(u => u.mobile !== mobile));
+                } else {
+                    const updated = {...userToUpdate, seatNumber: null, joiningDate: null};
+                    await fetch(`${FIREBASE_URL}/users/${mobile}.json`, { method: 'PUT', body: JSON.stringify(updated) });
+                    setUsers(users.map(u => u.mobile === mobile ? updated : u)); 
+                }
+                setAdminSeatModal(null); showToast("Seat Freed!");
+            };
+
+            // ---- BIRTHDAY & WHATSAPP LOGIC ----
+            const getUpcomingBirthdays = () => {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                return users.filter(u => u.role === 'student' && u.dob).map(u => {
+                    const dobParts = u.dob.split('-');
+                    if(dobParts.length !== 3) return null;
+                    const bMonth = parseInt(dobParts[1]) - 1;
+                    const bDate = parseInt(dobParts[2]);
+                    
+                    let bThisYear = new Date(today.getFullYear(), bMonth, bDate);
+                    if (bThisYear < today) bThisYear.setFullYear(today.getFullYear() + 1);
+                    
+                    const diffTime = bThisYear - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return { ...u, daysUntil: diffDays, nextBirthday: bThisYear };
+                }).filter(u => u && u.daysUntil >= 0 && u.daysUntil <= 7).sort((a, b) => a.daysUntil - b.daysUntil);
+            };
+
+            const sendBirthdayWhatsApp = (student) => {
+                let text = birthdayMsgTemplate.replace(/\[Name\]/g, student.name);
+                window.open(`https://wa.me/91${student.mobile}?text=${encodeURIComponent(text)}`, '_blank');
+            };
+
+            const getDueStudents = () => users.filter(u => u.role === 'student' && (u.totalFee || 0) > (u.paidFee || 0));
+            const sendWhatsApp = (student) => {
+                const dueAmt = (student.totalFee || 0) - (student.paidFee || 0);
+                let text = msgTemplate.replace(/\[Name\]/g, student.name).replace(/\[Due\]/g, dueAmt).replace(/\[Course\]/g, student.course);
+                window.open(`https://wa.me/91${student.mobile}?text=${encodeURIComponent(text)}`, '_blank');
+            };
+
+            // ---- ADMIN REPORTS LOGIC ----
+            const getFilteredReports = () => {
+                let filtered = attempts.filter(att => {
+                    const matchSearch = att.studentName.toLowerCase().includes(filters.search.toLowerCase()) || att.studentMobile.includes(filters.search);
+                    const matchCourse = filters.course === 'all' || att.examCourse === filters.course || att.studentCourse === filters.course;
+                    return matchSearch && matchCourse;
+                });
+                
+                if (activeAdminSubMenu === 'results-pass') filtered = filtered.filter(a => a.status === 'Pass');
+                if (activeAdminSubMenu === 'results-fail') filtered = filtered.filter(a => a.status === 'Fail');
+
+                const now = new Date();
+                if (activeAdminSubMenu === 'reports-daily') {
+                    filtered = filtered.filter(a => new Date(a.timestamp).toDateString() === now.toDateString());
+                } else if (activeAdminSubMenu === 'reports-monthly') {
+                    filtered = filtered.filter(a => new Date(a.timestamp).getMonth() === now.getMonth() && new Date(a.timestamp).getFullYear() === now.getFullYear());
+                } else if (activeAdminSubMenu === 'reports-yearly') {
+                    filtered = filtered.filter(a => new Date(a.timestamp).getFullYear() === now.getFullYear());
+                }
+
+                if (activeAdminSubMenu === 'results-rank') filtered.sort((a,b) => b.percentage - a.percentage);
+                else filtered.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)); 
+                return filtered;
+            };
+
+            const getAllQuestions = () => {
+                let allQs = [];
+                exams.forEach(ex => { if(ex.questions) ex.questions.forEach(q => { allQs.push({examTitle: ex.title, course: ex.course, question: q.question, correct: q.correct}); }); });
+                return allQs;
+            };
+
+            const downloadGenericReport = (dataToExport, sheetTitle) => {
+                if(!dataToExport || !dataToExport.length) return showToast("No Data Found", "error"); 
+                const ws = XLSX.utils.json_to_sheet(dataToExport); const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, sheetTitle.substring(0,30)); XLSX.writeFile(wb, `${sheetTitle.replace(/ /g, '_')}_${Date.now()}.xlsx`);
+                showToast("Report Exported Successfully!");
+            };
+
+            const exportCurrentView = () => {
+                let data = []; let title = "Report";
+                if (activeAdminSubMenu === 'students-list') {
+                    data = users.filter(u=>u.role==='student').map((s,i) => ({"SR": i+1, "Code": s.studentCode, "Name": s.name, "Father": s.fatherName, "Mobile": s.mobile, "Course": s.course, "DOB": s.dob}));
+                    title = "Student List";
+                } else if (activeAdminSubMenu === 'students-registration') {
+                    data = users.filter(u=>u.role==='student').map((s,i) => ({"SR": i+1, "Code": s.studentCode, "Name": s.name, "Reg Date": s.createdAt?new Date(s.createdAt).toLocaleDateString():'-', "Mobile": s.mobile, "Course": s.course}));
+                    title = "Registration Report";
+                } else if (activeAdminSubMenu === 'students-login') {
+                    data = loginHistory.map((l,i) => ({"SR": i+1, "Name": l.name, "Mobile": l.mobile, "Role": l.role, "Time": l.time}));
+                    title = "Login History";
+                } else if (activeAdminSubMenu.startsWith('results-') || activeAdminSubMenu.startsWith('reports-')) {
+                    if(activeAdminSubMenu === 'reports-question') {
+                        data = getAllQuestions().map((q,i) => ({"SR": i+1, "Exam": q.examTitle, "Course": q.course, "Question": q.question, "Correct Answer": q.correct}));
+                        title = "Question Bank Report";
+                    } else {
+                        data = getFilteredReports().map((r,i) => ({"Rank/SR": i+1, "Name": r.studentName, "Exam": r.examTitle, "Course": r.studentCourse, "Score": `${r.correctCount}/${r.totalQuestions}`, "Percent": `${r.percentage}%`, "Status": r.status, "Date": r.date.split(',')[0]}));
+                        title = activeAdminSubMenu.replace('-', ' ').toUpperCase();
+                    }
+                }
+                downloadGenericReport(data, title);
+            };
+
+            const printCurrentView = () => { window.print(); };
+
+            const renderReportTable = () => (
+                <div class="overflow-x-auto border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm print:shadow-none print:border-none print:text-black mt-4">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-gray-100 dark:bg-gray-700 font-bold uppercase text-gray-500 dark:text-gray-300">
+                            <tr><th class="p-3">Rank/Sr</th><th class="p-3">Student Name</th><th class="p-3">Course</th><th class="p-3">Exam</th><th class="p-3 text-center">Score</th><th class="p-3">Percent</th><th class="p-3">Status</th><th class="p-3">Date</th></tr>
+                        </thead>
+                        <tbody class="divide-y dark:divide-gray-700">
+                            {getFilteredReports().map((r,i)=>(
+                                <tr key={r.id} class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="p-3 font-mono">{i+1}</td>
+                                    <td class="p-3 font-bold">{r.studentName}</td>
+                                    <td class="p-3">{r.studentCourse || r.examCourse}</td>
+                                    <td class="p-3 text-brand-600 dark:text-brand-400">{r.examTitle}</td>
+                                    <td class="p-3 text-center font-bold">{r.correctCount}/{r.totalQuestions}</td>
+                                    <td class="p-3 font-black text-indigo-600 dark:text-indigo-400">{r.percentage}%</td>
+                                    <td class="p-3"><span class={`px-2 py-0.5 rounded text-[10px] font-bold ${r.status==='Pass'?'bg-emerald-100 text-emerald-700':'bg-rose-100 text-rose-700'}`}>{r.status}</span></td>
+                                    <td class="p-3 text-gray-500">{r.date.split(',')[0]}</td>
+                                </tr>
+                            ))}
+                            {getFilteredReports().length===0 && <tr><td colSpan="8" class="p-4 text-center text-gray-500">No records found.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            );
+
+            // ---- STUDENT EXAM ENGINE LOGIC ----
+            const initiateExam = (exam) => { setActiveExam(exam); setCurrentPage('exam-instructions'); };
+            const startExamEngine = () => {
+                const shuffled = [...activeExam.questions].sort(() => 0.5 - Math.random());
+                setExamQs(shuffled); setCurQIdx(0); setSelAns({}); setWarnings(0); setTimeLeft(activeExam.duration * 60);
+                setCurrentPage('exam-engine'); if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+            };
+
+            const handleSubmitExam = async (isAuto = false) => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                const answeredCount = Object.keys(selAns).length;
+                if (!isAuto && answeredCount < examQs.length) return; 
+                if (!isAuto && !confirm("Submit final exam?")) return; 
+                if (document.exitFullscreen) document.exitFullscreen();
+
+                let correctCount = 0; examQs.forEach((q, idx) => { if (selAns[idx] === q.correct) correctCount++; });
+                const percentage = parseFloat(((correctCount / examQs.length) * 100).toFixed(2));
+                const passStatus = percentage >= (activeExam.passingPercentage || 40) ? "Pass" : "Fail";
+                const attemptNum = attempts.filter(a => a.studentMobile === currentUser?.mobile && a.examId === activeExam.id).length + 1;
+                
+                const newAttempt = {
+                    id: 'attempt_' + Date.now(), examId: activeExam.id, examTitle: activeExam.title, examCourse: activeExam.course,
+                    studentMobile: currentUser.mobile, studentName: currentUser.name, studentFather: currentUser.fatherName, studentCourse: currentUser.course,
+                    attemptNumber: attemptNum, correctCount, totalQuestions: examQs.length, percentage, status: passStatus,
+                    selectedAnswers: selAns, shuffledQuestions: examQs, date: new Date().toLocaleString(), timestamp: Date.now(), timeTakenSeconds: (activeExam.duration * 60) - timeLeft
+                };
+                await fetch(`${FIREBASE_URL}/attempts/${newAttempt.id}.json`, { method: 'PUT', body: JSON.stringify(newAttempt) });
+                setAttempts([...attempts, newAttempt]); setLastAttemptId(newAttempt.id); setCurrentPage('result');
+            };
+
+            const handleStudentProfileSave = async (e) => {
+                e.preventDefault();
+                try {
+                    await fetch(`${FIREBASE_URL}/users/${currentUser.mobile}.json`, { method: 'PUT', body: JSON.stringify(currentUser) });
+                    setUsers(users.map(u => u.mobile === currentUser.mobile ? currentUser : u)); showToast("Profile Updated Successfully!");
+                } catch(e) { showToast("Update Failed", "error"); }
+            };
+            const handleBookSeat = async () => {
+                if(!joiningDate) return showToast("Select joining date", "error");
+                const updatedUser = {...currentUser, seatNumber: bookingSeat, joiningDate: joiningDate};
+                await fetch(`${FIREBASE_URL}/users/${currentUser.mobile}.json`, { method: 'PUT', body: JSON.stringify(updatedUser) });
+                setUsers(users.map(u => u.mobile === currentUser.mobile ? updatedUser : u)); setCurrentUser(updatedUser);
+                setBookingSeat(null); showToast(`Seat ${bookingSeat} Booked!`);
+            };
+
+            // ---- HTML RENDER START ----
+            if (isLoadingData) return <div class="h-screen flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-900"><div class="loader"></div><p class="mt-4 font-bold text-brand-600 animate-pulse">Starting ERP System...</p></div>;
+
+            const totalStudents = users.filter(u=>u.role==='student').length;
+            const totalIncome = users.reduce((sum, u) => sum + (u.paidFee || 0), 0);
+            const totalDue = users.reduce((sum, u) => sum + ((u.totalFee || 0) - (u.paidFee || 0)), 0);
+            const activeSeatsCount = users.filter(u => u.seatNumber).length;
+
+            return (
+                <div class="flex flex-col min-h-screen relative">
+                    <div class="fixed top-5 right-5 z-[100] flex flex-col gap-2 max-w-sm pointer-events-none">
+                        {toasts.map(t => (
+                            <div key={t.id} class={`p-4 rounded-xl shadow-lg border-l-4 flex items-center justify-between text-white pointer-events-auto ${t.type==='error'?'bg-rose-600 border-rose-900':'bg-emerald-600 border-emerald-900'}`}>
+                                <span class="text-sm font-semibold">{t.msg}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* TOP HEADER (Only for Login/Register/Student views) */}
+                    {currentPage !== 'admin-dashboard' && currentPage !== 'exam-engine' && (
+                        <div class="bg-gradient-to-r from-brand-800 via-brand-700 to-brand-600 text-white shadow-lg relative z-10 transition-colors">
+                            <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-white p-2 rounded-2xl shadow-xl flex items-center justify-center border-2 border-brand-400 w-16 h-16 md:w-20 md:h-20">
+                                        <img src={appSettings.logo} onError={handleImageError} class="max-w-full max-h-full object-contain" />
+                                    </div>
+                                    <div>
+                                        <h1 class="text-xl md:text-3xl font-extrabold tracking-wide text-amber-400 drop-shadow-md">{appSettings.title}</h1>
+                                        <p class="text-xs md:text-sm text-blue-100 mt-0.5"><i class="fa-solid fa-location-dot text-amber-400"></i> {appSettings.address}</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center md:items-end text-xs gap-3">
+                                    <div class="flex items-center gap-4">
+                                        <button onClick={toggleTheme} class="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all text-lg shadow-sm border border-white/20" title="Toggle Theme"><i class={`fa-solid ${isDarkMode ? 'fa-sun text-amber-400' : 'fa-moon text-blue-200'}`}></i></button>
+                                        <span class="bg-gradient-to-r from-amber-400 to-orange-500 text-brand-900 px-4 py-1.5 rounded-full font-bold uppercase tracking-wider shadow-md animate-pulse">
+                                            <i class="fa-solid fa-graduation-cap"></i> {appSettings.marquee}
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-4 text-blue-50 mt-1 font-medium"><span><i class="fa-solid fa-phone text-amber-400"></i> {appSettings.phone}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <main class={`flex-grow ${currentPage === 'admin-dashboard' ? 'flex h-screen overflow-hidden' : 'container mx-auto p-4 md:py-8 max-w-7xl'}`}>
+                        
+                        {/* 1. LOGIN */}
+                        {currentPage === 'login' && (
+                            <div class="flex flex-col lg:flex-row gap-8 items-start my-6">
+                                <div class="w-full lg:w-3/5 space-y-6 order-2 lg:order-1">
+                                    <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100 dark:border-gray-700 relative overflow-hidden transition-colors">
+                                        <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 dark:bg-brand-900/30 rounded-bl-full -z-10"></div>
+                                        <h2 class="text-2xl font-extrabold text-brand-700 dark:text-brand-400 mb-5 flex items-center gap-3">
+                                            <i class="fa-solid fa-graduation-cap text-amber-500 text-3xl"></i> Our Courses & Programs
+                                        </h2>
+                                        <div class="flex flex-wrap gap-2 md:gap-3">
+                                            {courses.map(c => (
+                                                <span key={c.name} class="bg-brand-50 dark:bg-gray-700 text-brand-700 dark:text-gray-100 border border-brand-200 dark:border-gray-600 px-4 py-2 rounded-full text-sm font-bold shadow-sm">{c.name}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-xl border border-gray-100 dark:border-gray-700 relative overflow-hidden transition-colors">
+                                        <h2 class="text-2xl font-extrabold text-brand-700 dark:text-brand-400 mb-5 flex items-center gap-3">
+                                            <i class="fa-solid fa-book-open-reader text-amber-500 text-3xl"></i> Library Facilities
+                                        </h2>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {[
+                                                {icon: 'fa-leaf', text: 'Peaceful Environment'}, {icon: 'fa-book', text: 'Large Variety of Books'},
+                                                {icon: 'fa-wifi', text: 'Unlimited Internet'}, {icon: 'fa-square-parking', text: 'Parking Available'},
+                                                {icon: 'fa-newspaper', text: 'Daily Newspaper'}, {icon: 'fa-glass-water', text: 'R.O. Water'},
+                                                {icon: 'fa-video', text: 'Under CCTV Surveillance'}, {icon: 'fa-building', text: 'Nearby Best Library'},
+                                                {icon: 'fa-bullhorn', text: 'Exam Updates & Guidance'}, {icon: 'fa-clock', text: '7am to 10pm Open'}
+                                            ].map((item, idx) => (
+                                                <div key={idx} class="flex items-center gap-3 text-sm md:text-base text-gray-700 dark:text-gray-300 font-medium">
+                                                    <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-gray-700 text-brand-500 dark:text-brand-400 flex items-center justify-center shrink-0"><i class={`fa-solid ${item.icon}`}></i></div>
+                                                    {item.text}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gradient-to-br from-brand-700 to-brand-900 dark:from-slate-800 dark:to-slate-900 rounded-3xl p-6 md:p-8 shadow-xl text-white relative overflow-hidden">
+                                        <i class="fa-solid fa-award absolute -bottom-4 -right-4 text-8xl text-brand-600 dark:text-slate-700 opacity-50"></i>
+                                        <h2 class="text-2xl font-extrabold text-amber-400 mb-5 flex items-center gap-3 relative z-10"><i class="fa-solid fa-star"></i> Why Choose Our Institution</h2>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                                            {[
+                                                'Realtime Experience', 'Online / Offline Courses', 'Job Oriented Training',
+                                                'Quality Education', 'Support & Guidance', 'Latest & Updated Courses',
+                                                'Placement Support', 'Easily Accessible', 'Industry Projects included'
+                                            ].map((item, idx) => (
+                                                <div key={idx} class="flex items-start gap-2 text-sm font-semibold"><i class="fa-solid fa-circle-check text-emerald-400 mt-1 shadow-sm shrink-0"></i><span>{item}</span></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="w-full lg:w-2/5 order-1 lg:order-2 sticky top-6">
+                                    <div class="glass-panel rounded-3xl shadow-2xl border border-white dark:border-gray-700 overflow-hidden w-full transition-colors">
+                                        <div class="flex border-b border-gray-100 dark:border-gray-700">
+                                            <button onClick={() => setLoginRole('student')} class={`flex-1 py-4 text-sm font-bold transition-all ${loginRole==='student'?'bg-brand-50 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400 border-b-4 border-brand-500':'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}><i class="fa-solid fa-user-graduate"></i> Student Portal</button>
+                                            <button onClick={() => setLoginRole('admin')} class={`flex-1 py-4 text-sm font-bold transition-all ${loginRole==='admin'?'bg-brand-50 dark:bg-brand-900/50 text-brand-700 dark:text-brand-400 border-b-4 border-brand-500':'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}><i class="fa-solid fa-user-shield"></i> Admin Portal</button>
+                                        </div>
+                                        <div class="p-8 space-y-6">
+                                            <div class="text-center">
+                                                <div class="mx-auto w-24 h-24 mb-4 flex items-center justify-center">
+                                                    <img src={appSettings.logo} onError={handleImageError} alt="ECE Logo" class="max-w-full max-h-full object-contain drop-shadow-md" />
+                                                </div>
+                                                <h3 class="text-2xl font-extrabold text-gray-800 dark:text-white">{loginRole==='admin'?'Admin Login':'Student Login'}</h3>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Welcome to {appSettings.title}</p>
+                                            </div>
+                                            <form onSubmit={handleLogin} class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">{loginRole==='admin'?'Admin ID':'WhatsApp Number'}</label>
+                                                    <div class="relative">
+                                                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-gray-400"></i>
+                                                        <input type="text" value={loginMobile} onChange={e=>setLoginMobile(e.target.value)} required placeholder={loginRole==='admin'?'Enter Admin ID':'10-digit WhatsApp'} class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm font-medium outline-none transition dark:text-white"/>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 mb-1">Password</label>
+                                                    <div class="relative">
+                                                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-gray-400"></i>
+                                                        <input type="password" value={loginPass} onChange={e=>setLoginPass(e.target.value)} required placeholder="••••••••" class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm font-medium outline-none transition dark:text-white"/>
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="w-full bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white font-bold py-3.5 rounded-xl shadow-lg transform hover:-translate-y-0.5 transition">Login <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                                            </form>
+                                            {loginRole === 'student' && (
+                                                <p class="text-center text-xs text-gray-600 dark:text-gray-400 font-medium pt-2">New Student? <button onClick={()=>setCurrentPage('register')} class="text-brand-600 dark:text-brand-400 font-bold hover:underline">Register Here</button></p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. REGISTRATION */}
+                        {currentPage === 'register' && (
+                            <div class="max-w-4xl w-full mx-auto bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700 mt-6 transition-colors">
+                                <div class="text-center mb-6">
+                                    <div class="mx-auto w-20 h-20 mb-3 flex items-center justify-center"><img src={appSettings.logo} onError={handleImageError} class="max-w-full max-h-full object-contain" /></div>
+                                    <h3 class="text-2xl font-extrabold text-brand-700 dark:text-brand-400">New Registration</h3>
+                                </div>
+                                <form onSubmit={handleRegister} class="space-y-6">
+                                    <div class="flex justify-center mb-4">
+                                        <label class="cursor-pointer relative group">
+                                            <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-brand-300 flex items-center justify-center overflow-hidden">
+                                                {regData.photo ? <img src={regData.photo} class="w-full h-full object-cover"/> : <i class="fa-solid fa-camera text-2xl text-gray-400"></i>}
+                                            </div>
+                                            <div class="absolute inset-0 bg-black/50 rounded-full hidden group-hover:flex items-center justify-center text-white text-xs font-bold">Upload Photo</div>
+                                            <input type="file" class="hidden" accept="image/*" onChange={e=>handlePhotoUpload(e, setRegData)}/>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Full Name</label><input type="text" value={regData.name} onChange={e=>setRegData({...regData, name:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Father's Name</label><input type="text" value={regData.fatherName} onChange={e=>setRegData({...regData, fatherName:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">WhatsApp Number</label><input type="text" maxLength="10" value={regData.mobile} onChange={e=>setRegData({...regData, mobile:e.target.value.replace(/\D/g,'')})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Gender</label><select value={regData.gender} onChange={e=>setRegData({...regData, gender:e.target.value})} class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"><option>Male</option><option>Female</option><option>Other</option></select></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Date of Birth</label><input type="date" value={regData.dob} onChange={e=>setRegData({...regData, dob:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div class="hidden md:block"></div>
+                                        
+                                        <div class="md:col-span-3 border-t dark:border-gray-700 pt-4"><h4 class="text-sm font-bold mb-2 text-brand-600">Address Details</h4></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Village/City</label><input type="text" value={regData.village} onChange={e=>setRegData({...regData, village:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Tehsil</label><input type="text" value={regData.tehsil} onChange={e=>setRegData({...regData, tehsil:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">District</label><input type="text" value={regData.dist} onChange={e=>setRegData({...regData, dist:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">State</label><input type="text" value={regData.state} onChange={e=>setRegData({...regData, state:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Pincode</label><input type="text" maxLength="6" value={regData.pincode} onChange={e=>setRegData({...regData, pincode:e.target.value.replace(/\D/g,'')})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div class="hidden md:block"></div>
+
+                                        <div class="md:col-span-3 border-t dark:border-gray-700 pt-4"><h4 class="text-sm font-bold mb-2 text-brand-600">Course & Security</h4></div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-500 mb-1">Select Course</label>
+                                            <select value={regData.course} onChange={e=>setRegData({...regData, course:e.target.value, courseCode:''})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700">
+                                                <option value="">-- Select --</option>
+                                                {courses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        {courses.find(c=>c.name===regData.course)?.requireCode && (
+                                            <div><label class="block text-xs font-bold text-rose-500 mb-1">Course Code</label><input type="text" value={regData.courseCode} onChange={e=>setRegData({...regData, courseCode:e.target.value})} required class="w-full p-2.5 border-2 border-rose-300 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        )}
+                                        <div class={courses.find(c=>c.name===regData.course)?.requireCode ? '' : 'hidden md:block'}></div>
+
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Create Password</label><input type="password" value={regData.password} onChange={e=>setRegData({...regData, password:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Confirm Password</label><input type="password" value={regData.cPassword} onChange={e=>setRegData({...regData, cPassword:e.target.value})} required class="w-full p-2.5 border dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700"/></div>
+                                    </div>
+                                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-md transition">Complete Registration</button>
+                                    <p class="text-center text-sm font-medium mt-4 cursor-pointer text-gray-500 hover:text-brand-600" onClick={()=>setCurrentPage('login')}>Back to Login</p>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* 3. ADMIN DASHBOARD (SIDEBAR LAYOUT) */}
+                        {currentPage === 'admin-dashboard' && (
+                            <div class="flex w-full h-full bg-slate-100 dark:bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700 m-2 mt-4">
+                                
+                                {/* SIDEBAR */}
+                                <aside class={`${isSidebarOpen ? 'w-64' : 'w-0 hidden'} transition-all duration-300 flex-shrink-0 bg-white dark:bg-gray-800 border-r dark:border-gray-700 overflow-y-auto h-full flex flex-col shadow-lg z-20`}>
+                                    <div class="p-4 border-b dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
+                                        <div class="flex items-center gap-2">
+                                            <img src={appSettings.logo} onError={handleImageError} class="w-8 h-8 object-contain"/>
+                                            <span class="font-black text-brand-700 dark:text-brand-400 text-sm truncate">Admin ERP</span>
+                                        </div>
+                                        <button onClick={toggleTheme} class="text-gray-500 hover:text-amber-500"><i class={`fa-solid ${isDarkMode ? 'fa-sun text-amber-400' : 'fa-moon'}`}></i></button>
+                                    </div>
+
+                                    <div class="p-3 flex-1 overflow-y-auto">
+                                        <div onClick={()=>{setActiveAdminMenu('dashboard'); setActiveAdminSubMenu('');}} class={`sidebar-menu-item ${activeAdminMenu === 'dashboard' ? 'active' : ''}`}><span><i class="fa-solid fa-chart-pie w-6"></i> Dashboard</span></div>
+
+                                        <div onClick={()=>setActiveAdminMenu('students')} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'students' ? 'active' : ''}`}><span><i class="fa-solid fa-user-graduate w-6"></i> Students</span><i class={`fa-solid fa-chevron-${activeAdminMenu === 'students' ? 'down' : 'right'} text-xs`}></i></div>
+                                        {activeAdminMenu === 'students' && (
+                                            <div class="sub-menu">
+                                                <div onClick={()=>setActiveAdminSubMenu('students-list')} class={`sub-menu-item ${activeAdminSubMenu === 'students-list' ? 'active' : ''}`}><i class="fa-solid fa-list text-[10px]"></i> Student List</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('students-registration')} class={`sub-menu-item ${activeAdminSubMenu === 'students-registration' ? 'active' : ''}`}><i class="fa-solid fa-address-card text-[10px]"></i> Registration Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('students-login')} class={`sub-menu-item ${activeAdminSubMenu === 'students-login' ? 'active' : ''}`}><i class="fa-solid fa-clock-rotate-left text-[10px]"></i> Login History</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('fees')} class={`sub-menu-item ${activeAdminSubMenu === 'fees' ? 'active' : ''}`}><i class="fa-solid fa-indian-rupee-sign text-[10px]"></i> Fee Management</div>
+                                            </div>
+                                        )}
+
+                                        <div onClick={()=>setActiveAdminMenu('exams')} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'exams' ? 'active' : ''}`}><span><i class="fa-solid fa-pen-to-square w-6"></i> Exams</span><i class={`fa-solid fa-chevron-${activeAdminMenu === 'exams' ? 'down' : 'right'} text-xs`}></i></div>
+                                        {activeAdminMenu === 'exams' && (
+                                            <div class="sub-menu">
+                                                <div onClick={()=>setActiveAdminSubMenu('exams-create')} class={`sub-menu-item ${activeAdminSubMenu === 'exams-create' ? 'active' : ''}`}><i class="fa-solid fa-plus text-[10px]"></i> Create Exam</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('exams-list')} class={`sub-menu-item ${activeAdminSubMenu === 'exams-list' ? 'active' : ''}`}><i class="fa-solid fa-list-check text-[10px]"></i> Exam List</div>
+                                            </div>
+                                        )}
+
+                                        <div onClick={()=>setActiveAdminMenu('results')} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'results' ? 'active' : ''}`}><span><i class="fa-solid fa-trophy w-6"></i> Results</span><i class={`fa-solid fa-chevron-${activeAdminMenu === 'results' ? 'down' : 'right'} text-xs`}></i></div>
+                                        {activeAdminMenu === 'results' && (
+                                            <div class="sub-menu">
+                                                <div onClick={()=>setActiveAdminSubMenu('results-all')} class={`sub-menu-item ${activeAdminSubMenu === 'results-all' ? 'active' : ''}`}><i class="fa-solid fa-square-poll-vertical text-[10px]"></i> Result Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('results-pass')} class={`sub-menu-item ${activeAdminSubMenu === 'results-pass' ? 'active' : ''}`}><i class="fa-solid fa-check text-[10px] text-emerald-500"></i> Pass Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('results-fail')} class={`sub-menu-item ${activeAdminSubMenu === 'results-fail' ? 'active' : ''}`}><i class="fa-solid fa-xmark text-[10px] text-rose-500"></i> Fail Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('results-rank')} class={`sub-menu-item ${activeAdminSubMenu === 'results-rank' ? 'active' : ''}`}><i class="fa-solid fa-medal text-[10px] text-amber-500"></i> Rank List</div>
+                                            </div>
+                                        )}
+
+                                        <div onClick={()=>setActiveAdminMenu('reports')} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'reports' ? 'active' : ''}`}><span><i class="fa-solid fa-chart-line w-6"></i> Reports</span><i class={`fa-solid fa-chevron-${activeAdminMenu === 'reports' ? 'down' : 'right'} text-xs`}></i></div>
+                                        {activeAdminMenu === 'reports' && (
+                                            <div class="sub-menu">
+                                                <div onClick={()=>setActiveAdminSubMenu('reports-daily')} class={`sub-menu-item ${activeAdminSubMenu === 'reports-daily' ? 'active' : ''}`}><i class="fa-regular fa-calendar-days text-[10px]"></i> Daily Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('reports-monthly')} class={`sub-menu-item ${activeAdminSubMenu === 'reports-monthly' ? 'active' : ''}`}><i class="fa-regular fa-calendar text-[10px]"></i> Monthly Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('reports-yearly')} class={`sub-menu-item ${activeAdminSubMenu === 'reports-yearly' ? 'active' : ''}`}><i class="fa-solid fa-calendar-day text-[10px]"></i> Yearly Report</div>
+                                                <div onClick={()=>setActiveAdminSubMenu('reports-question')} class={`sub-menu-item ${activeAdminSubMenu === 'reports-question' ? 'active' : ''}`}><i class="fa-solid fa-clipboard-question text-[10px]"></i> Question Bank Report</div>
+                                            </div>
+                                        )}
+
+                                        <div onClick={()=>{setActiveAdminMenu('library'); setActiveAdminSubMenu('');}} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'library' ? 'active' : ''}`}><span><i class="fa-solid fa-book-open w-6"></i> Library Grid</span></div>
+                                        <div onClick={()=>{setActiveAdminMenu('messages'); setActiveAdminSubMenu('');}} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'messages' ? 'active' : ''}`}><span><i class="fa-brands fa-whatsapp w-6"></i> Messages/Alerts</span></div>
+                                        
+                                        <div class="mt-6 pt-4 border-t dark:border-gray-700">
+                                            <div onClick={()=>{setActiveAdminMenu('export'); setActiveAdminSubMenu('');}} class={`sidebar-menu-item ${activeAdminMenu === 'export' ? 'active' : ''}`}><span><i class="fa-solid fa-download w-6"></i> Export / Download</span></div>
+                                            <div onClick={()=>{setActiveAdminMenu('settings'); setActiveAdminSubMenu('');}} class={`sidebar-menu-item mt-2 ${activeAdminMenu === 'settings' ? 'active' : ''}`}><span><i class="fa-solid fa-gear w-6"></i> System Settings</span></div>
+                                            <div onClick={handleLogout} class="sidebar-menu-item mt-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"><span><i class="fa-solid fa-power-off w-6"></i> Logout Securely</span></div>
+                                        </div>
+                                    </div>
+                                </aside>
+
+                                {/* MAIN CONTENT AREA */}
+                                <div class="flex-1 flex flex-col h-full overflow-hidden">
+                                    <header class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 p-4 flex justify-between items-center shadow-sm z-10 shrink-0">
+                                        <div class="flex items-center gap-3">
+                                            <button onClick={()=>setIsSidebarOpen(!isSidebarOpen)} class="text-gray-500 hover:text-brand-600"><i class="fa-solid fa-bars text-xl"></i></button>
+                                            <h2 class="font-bold text-lg hidden sm:block capitalize">{activeAdminSubMenu ? activeAdminSubMenu.replace('-', ' ') : activeAdminMenu}</h2>
+                                        </div>
+                                        <div class="flex items-center gap-4 text-sm font-bold text-gray-600 dark:text-gray-300">
+                                            <span><i class="fa-solid fa-user-circle text-brand-500"></i> Admin</span>
+                                            <button onClick={handleLogout} class="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 px-3 py-1.5 rounded-lg text-xs hover:bg-rose-200 transition"><i class="fa-solid fa-power-off"></i> Logout</button>
+                                        </div>
+                                    </header>
+
+                                    <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 pb-20">
+                                        
+                                        {/* DASHBOARD */}
+                                        {activeAdminMenu === 'dashboard' && (
+                                            <div>
+                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border-l-4 border-blue-500 shadow-sm"><div class="flex justify-between items-start"><p class="text-xs text-gray-500 uppercase font-bold">Students</p><i class="fa-solid fa-users text-blue-500"></i></div><h3 class="text-3xl font-black mt-2">{totalStudents}</h3></div>
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border-l-4 border-amber-500 shadow-sm"><div class="flex justify-between items-start"><p class="text-xs text-gray-500 uppercase font-bold">Library Seats</p><i class="fa-solid fa-chair text-amber-500"></i></div><h3 class="text-3xl font-black mt-2">{activeSeatsCount}/100</h3></div>
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border-l-4 border-emerald-500 shadow-sm"><div class="flex justify-between items-start"><p class="text-xs text-gray-500 uppercase font-bold">Total Income</p><i class="fa-solid fa-indian-rupee-sign text-emerald-500"></i></div><h3 class="text-3xl font-black text-emerald-600 mt-2">₹{totalIncome}</h3></div>
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border-l-4 border-rose-500 shadow-sm"><div class="flex justify-between items-start"><p class="text-xs text-gray-500 uppercase font-bold">Total Dues</p><i class="fa-solid fa-wallet text-rose-500"></i></div><h3 class="text-3xl font-black text-rose-600 mt-2">₹{totalDue}</h3></div>
+                                                </div>
+
+                                                <h3 class="font-bold border-b dark:border-gray-700 pb-2 mb-4 text-brand-700 dark:text-brand-400">Course-wise Student Count</h3>
+                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                                    {courses.map(c => {
+                                                        const count = users.filter(u => u.role === 'student' && u.course === c.name).length;
+                                                        return (
+                                                            <div key={c.name} class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center transition hover:border-brand-500">
+                                                                <p class="text-xs text-gray-500 font-bold w-2/3 truncate" title={c.name}>{c.name}</p>
+                                                                <h3 class="text-2xl font-black text-brand-600 dark:text-brand-400">{count}</h3>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+
+                                                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border dark:border-gray-700 mt-4">
+                                                    <h3 class="font-bold border-b dark:border-gray-700 pb-2 mb-4">Upcoming Birthdays (Next 7 Days) 🎉</h3>
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        {getUpcomingBirthdays().map(u => (
+                                                            <div key={u.mobile} class="bg-amber-50 dark:bg-amber-900/20 p-4 border border-amber-200 dark:border-amber-800 rounded-xl flex justify-between items-center">
+                                                                <div><p class="font-bold text-sm">{u.name}</p><p class="text-xs text-amber-600 font-bold">{u.daysUntil === 0 ? 'Today!' : `In ${u.daysUntil} days`}</p></div>
+                                                                <button onClick={()=>sendBirthdayWhatsApp(u)} class="bg-emerald-500 hover:bg-emerald-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow"><i class="fa-brands fa-whatsapp"></i></button>
+                                                            </div>
+                                                        ))}
+                                                        {getUpcomingBirthdays().length === 0 && <p class="text-sm text-gray-500 col-span-3">No upcoming birthdays in the next 7 days.</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* STUDENTS -> SUB TABS */}
+                                        {activeAdminMenu === 'students' && (
+                                            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border dark:border-gray-700 p-5">
+                                                {activeAdminSubMenu === 'students-list' && (
+                                                    <div>
+                                                        <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                                                            <input type="text" placeholder="Search by Name/Mobile" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} class="p-2 border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm rounded-lg w-full md:max-w-sm"/>
+                                                            <div class="flex gap-2">
+                                                                <button onClick={exportCurrentView} class="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-xs"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+                                                                <button onClick={printCurrentView} class="bg-gray-800 text-white px-4 py-2 rounded font-bold text-xs"><i class="fa-solid fa-print mr-1"></i> Print</button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="overflow-x-auto border dark:border-gray-700 rounded-xl">
+                                                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                                                <thead class="bg-gray-50 dark:bg-gray-900 font-bold uppercase text-gray-500"><tr><th class="p-3">Std Code</th><th class="p-3">Name</th><th class="p-3">WhatsApp</th><th class="p-3">Course</th><th class="p-3">Password</th><th class="p-3">Action</th></tr></thead>
+                                                                <tbody class="divide-y dark:divide-gray-700">
+                                                                    {users.filter(u=>u.role==='student' && (u.name.toLowerCase().includes(studentSearch.toLowerCase()) || u.mobile.includes(studentSearch))).map((s,i) => (
+                                                                        <tr key={i} class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                                            <td class="p-3 font-mono font-bold text-brand-600">{s.studentCode || 'N/A'}</td>
+                                                                            <td class="p-3 font-bold">{s.name}</td><td class="p-3">{s.mobile}</td><td class="p-3">{s.course}</td><td class="p-3 font-mono text-rose-500">{s.password}</td>
+                                                                            <td class="p-3 flex gap-2">
+                                                                                <button onClick={()=>setEditingStudent(s)} class="bg-indigo-100 text-indigo-600 px-2 py-1 rounded font-bold text-[10px]"><i class="fa-solid fa-pen"></i> Edit</button>
+                                                                                <button onClick={()=>{const t=msgTemplate.replace(/\[Name\]/g,s.name).replace(/\[Course\]/g,s.course).replace(/\[Due\]/g,(s.totalFee||0)-(s.paidFee||0)); window.open(`https://wa.me/91${s.mobile}?text=${encodeURIComponent(t)}`);}} class="bg-emerald-100 text-emerald-600 px-2 py-1 rounded font-bold text-[10px]"><i class="fa-brands fa-whatsapp"></i> Chat</button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                    {users.filter(u=>u.role==='student').length===0 && <tr><td colSpan="6" class="p-4 text-center">No students found</td></tr>}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {activeAdminSubMenu === 'students-registration' && (
+                                                    <div>
+                                                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold">Recent Registrations</h3><button onClick={exportCurrentView} class="bg-emerald-600 text-white px-4 py-1.5 rounded text-xs font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Export</button></div>
+                                                        <div class="overflow-x-auto border dark:border-gray-700 rounded-xl">
+                                                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                                                <thead class="bg-gray-50 dark:bg-gray-900 font-bold uppercase text-gray-500"><tr><th class="p-3">Date</th><th class="p-3">Std Code</th><th class="p-3">Name</th><th class="p-3">Course</th><th class="p-3">Mobile</th></tr></thead>
+                                                                <tbody class="divide-y dark:divide-gray-700">
+                                                                    {users.filter(u=>u.role==='student').sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).map((s,i)=>(
+                                                                        <tr key={i} class="hover:bg-gray-50 dark:hover:bg-gray-700"><td class="p-3">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'N/A'}</td><td class="p-3 font-mono text-brand-600">{s.studentCode}</td><td class="p-3 font-bold">{s.name}</td><td class="p-3">{s.course}</td><td class="p-3">{s.mobile}</td></tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {activeAdminSubMenu === 'students-login' && (
+                                                    <div>
+                                                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold">System Login Activity</h3><button onClick={exportCurrentView} class="bg-emerald-600 text-white px-4 py-1.5 rounded text-xs font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Export</button></div>
+                                                        <div class="overflow-x-auto border dark:border-gray-700 rounded-xl">
+                                                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                                                <thead class="bg-gray-50 dark:bg-gray-900 font-bold uppercase text-gray-500"><tr><th class="p-3">Date & Time</th><th class="p-3">Name</th><th class="p-3">Mobile ID</th><th class="p-3">Role</th></tr></thead>
+                                                                <tbody class="divide-y dark:divide-gray-700">
+                                                                    {loginHistory.slice().sort((a,b)=>b.timestamp - a.timestamp).map((l,i)=>(
+                                                                        <tr key={i} class="hover:bg-gray-50 dark:hover:bg-gray-700"><td class="p-3 text-gray-500">{l.time}</td><td class="p-3 font-bold">{l.name}</td><td class="p-3">{l.mobile}</td><td class="p-3"><span class={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${l.role==='admin'?'bg-indigo-100 text-indigo-700':'bg-emerald-100 text-emerald-700'}`}>{l.role}</span></td></tr>
+                                                                    ))}
+                                                                    {loginHistory.length === 0 && <tr><td colSpan="4" class="p-4 text-center text-gray-500">No login history recorded yet.</td></tr>}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {activeAdminSubMenu === 'fees' && (
+                                                    <div>
+                                                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold"><i class="fa-solid fa-indian-rupee-sign text-emerald-500"></i> Fee Collection Dashboard</h3></div>
+                                                        <div class="overflow-x-auto border rounded-xl dark:border-gray-700">
+                                                            <table class="w-full text-left text-xs whitespace-nowrap">
+                                                                <thead class="bg-gray-50 dark:bg-gray-900 uppercase font-bold text-gray-500"><tr><th class="p-3">Student</th><th class="p-3">Course</th><th class="p-3">Base Fee</th><th class="p-3 text-brand-500">Discount</th><th class="p-3">Final Fee</th><th class="p-3 text-emerald-600">Paid</th><th class="p-3 text-rose-600">Due</th><th class="p-3">Status</th><th class="p-3">Action</th></tr></thead>
+                                                                <tbody class="divide-y dark:divide-gray-700">
+                                                                    {users.filter(u=>u.role==='student').map(s => {
+                                                                        const due = (s.totalFee || 0) - (s.paidFee || 0);
+                                                                        return (
+                                                                            <tr key={s.mobile} class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                                                <td class="p-3 font-bold">{s.studentCode} - {s.name}</td><td class="p-3">{s.course}</td>
+                                                                                <td class="p-3 text-gray-500 line-through">₹{s.baseFee || s.totalFee || 0}</td>
+                                                                                <td class="p-3 font-bold text-brand-500">₹{s.discount || 0}</td>
+                                                                                <td class="p-3 font-mono font-bold">₹{s.totalFee || 0}</td>
+                                                                                <td class="p-3 font-mono text-emerald-600 font-bold">₹{s.paidFee || 0}</td><td class="p-3 font-mono text-rose-600 font-bold">₹{due}</td>
+                                                                                <td class="p-3"><span class={`text-[10px] font-bold px-2 py-1 rounded ${due<=0?'bg-emerald-100 text-emerald-700':(s.paidFee>0?'bg-amber-100 text-amber-700':'bg-rose-100 text-rose-700')}`}>{due<=0?'Paid':(s.paidFee>0?'Partial':'Pending')}</span></td>
+                                                                                <td class="p-3 flex gap-2"><button disabled={due<=0} onClick={()=>setFeeModal(s)} class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-bold disabled:opacity-50">Collect</button><button onClick={()=>setEditFeeModal({...s, discount: s.discount||0})} class="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-pen"></i> Override</button></td>
+                                                                            </tr>
+                                                                        )
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* EXAMS -> SUB TABS */}
+                                        {activeAdminMenu === 'exams' && (
+                                            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border dark:border-gray-700 p-5">
+                                                {activeAdminSubMenu === 'exams-list' && (
+                                                    <div>
+                                                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold">All Examinations</h3><button onClick={()=>{resetExamForm(); setActiveAdminSubMenu('exams-create');}} class="bg-brand-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow">Create New Exam</button></div>
+                                                        <div class="grid md:grid-cols-2 gap-4">
+                                                            {exams.map(ex => (
+                                                                <div key={ex.id} class="p-4 rounded-xl border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 relative">
+                                                                    <span class="absolute top-3 right-3 text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{ex.status}</span>
+                                                                    <h4 class="font-bold text-brand-600 dark:text-brand-400">{ex.title}</h4>
+                                                                    <p class="text-[10px] font-bold mt-1 text-gray-600 dark:text-gray-400">Course: {ex.course}</p>
+                                                                    <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-clock"></i> {ex.duration} Mins | <i class="fa-solid fa-list-ol"></i> {ex.questions?.length||0} Qs | Pass: {ex.passingPercentage}%</p>
+                                                                    <div class="mt-4 flex gap-2"><button onClick={()=>handleEditExam(ex)} class="text-xs border text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-gray-800 shadow-sm"><i class="fa-solid fa-pen"></i> Edit Details</button><button onClick={()=>handleDeleteExam(ex.id)} class="text-xs border text-rose-600 dark:border-rose-800 dark:text-rose-400 px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-gray-800 shadow-sm"><i class="fa-solid fa-trash"></i> Delete</button></div>
+                                                                </div>
+                                                            ))}
+                                                            {exams.length === 0 && <p class="text-sm text-gray-500 col-span-2 text-center py-4">No exams created yet.</p>}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {activeAdminSubMenu === 'exams-create' && (
+                                                    <div class="space-y-6">
+                                                        <button onClick={()=>setActiveAdminSubMenu('exams-list')} class="text-sm font-bold text-gray-500 hover:text-brand-500"><i class="fa-solid fa-arrow-left"></i> Back to Exam List</button>
+                                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Exam Title</label><input type="text" value={examForm.title} onChange={e=>setExamForm({...examForm, title: e.target.value})} class="w-full p-2 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"/></div>
+                                                            <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Target Course</label><select value={examForm.course} onChange={e=>setExamForm({...examForm, course: e.target.value})} class="w-full p-2 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"><option value="">-- Select --</option>{courses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></div>
+                                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">Duration (Mins)</label><input type="number" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration: Number(e.target.value)})} class="w-full p-2 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"/></div>
+                                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">Passing %</label><input type="number" value={examForm.passingPercentage} onChange={e=>setExamForm({...examForm, passingPercentage: Number(e.target.value)})} class="w-full p-2 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"/></div>
+                                                            <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Instructions (Optional)</label><input type="text" value={examForm.instructions} onChange={e=>setExamForm({...examForm, instructions: e.target.value})} class="w-full p-2 border rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600"/></div>
+                                                        </div>
+                                                        <div class="bg-gray-50 dark:bg-gray-900 p-5 rounded-xl border dark:border-gray-700 space-y-4">
+                                                            <h4 class="text-sm font-bold border-b dark:border-gray-600 pb-2 flex justify-between"><span>Add Questions ({questionsList.length})</span></h4>
+                                                            <textarea rows="2" value={curQuestionText} onChange={e=>setCurQuestionText(e.target.value)} placeholder="Type Question Here..." class="w-full p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"></textarea>
+                                                            <div class="grid grid-cols-2 gap-3">
+                                                                <input value={curOptions.A} onChange={e=>setCurOptions({...curOptions, A: e.target.value})} placeholder="Option A" class="p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                                                                <input value={curOptions.B} onChange={e=>setCurOptions({...curOptions, B: e.target.value})} placeholder="Option B" class="p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                                                                <input value={curOptions.C} onChange={e=>setCurOptions({...curOptions, C: e.target.value})} placeholder="Option C" class="p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                                                                <input value={curOptions.D} onChange={e=>setCurOptions({...curOptions, D: e.target.value})} placeholder="Option D" class="p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                                                            </div>
+                                                            <div class="flex gap-2">
+                                                                <select value={curCorrect} onChange={e=>setCurCorrect(e.target.value)} class="flex-1 p-3 border rounded-lg text-sm dark:bg-gray-800 dark:border-gray-600"><option value="">-- Select Correct Answer --</option>{Object.values(curOptions).map((opt, i) => opt && <option key={i} value={opt}>{opt}</option>)}</select>
+                                                                <button onClick={handleAddQuestionManual} class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-6 rounded-lg shadow transition">Add to Exam</button>
+                                                            </div>
+                                                            <div class="mt-4 border-t dark:border-gray-700 pt-4">
+                                                                <h4 class="text-xs font-bold text-gray-500 mb-2">Current Questions in this Exam: {questionsList.length}</h4>
+                                                                <div class="max-h-48 overflow-y-auto space-y-2 pr-2">
+                                                                    {questionsList.map((q,i)=>(
+                                                                        <div key={i} class="bg-white dark:bg-gray-800 p-3 border dark:border-gray-600 rounded-lg text-xs relative">
+                                                                            <p class="font-bold mb-1 pr-6">Q{i+1}: {q.question}</p>
+                                                                            <p class="text-gray-500 dark:text-gray-400">A: {q.options[0]} | B: {q.options[1]} | C: {q.options[2]} | D: {q.options[3]}</p>
+                                                                            <p class="text-emerald-600 font-bold mt-1">Ans: {q.correct}</p>
+                                                                            <button onClick={()=>setQuestionsList(p=>p.filter((_,idx)=>idx!==i))} class="absolute top-2 right-2 text-rose-500 hover:bg-rose-50 rounded p-1"><i class="fa-solid fa-trash"></i></button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button onClick={handleSaveExam} class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-md transition text-lg">{editExamId ? 'Update Existing Exam' : 'Save & Publish New Exam'}</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* RESULTS & REPORTS RENDERING */}
+                                        {(activeAdminMenu === 'results' || activeAdminMenu === 'reports') && (
+                                            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border dark:border-gray-700 p-5">
+                                                <div class="flex justify-between items-center mb-4">
+                                                    <h3 class="font-bold text-lg capitalize">{activeAdminSubMenu.replace('-', ' ')}</h3>
+                                                    <div class="flex gap-2">
+                                                        <button onClick={exportCurrentView} class="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm hover:bg-emerald-700"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+                                                        <button onClick={printCurrentView} class="bg-gray-800 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm hover:bg-black"><i class="fa-solid fa-print mr-1"></i> Print</button>
+                                                    </div>
+                                                </div>
+                                                <div class="flex gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border dark:border-gray-700 mb-4">
+                                                    <input type="text" placeholder="Search by name..." value={filters.search} onChange={e=>setFilters({...filters, search: e.target.value})} class="flex-1 p-2 border rounded text-xs dark:bg-gray-800 dark:border-gray-600"/>
+                                                    <select value={filters.course} onChange={e=>setFilters({...filters, course: e.target.value})} class="p-2 border rounded text-xs dark:bg-gray-800 dark:border-gray-600"><option value="all">All Courses</option>{courses.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</select>
+                                                </div>
+                                                
+                                                {/* Render Specific View */}
+                                                {activeAdminSubMenu === 'reports-question' ? (
+                                                    <div class="overflow-x-auto border dark:border-gray-700 rounded-lg">
+                                                        <table class="w-full text-left text-xs whitespace-nowrap">
+                                                            <thead class="bg-gray-100 dark:bg-gray-700 font-bold uppercase text-gray-500 dark:text-gray-300">
+                                                                <tr><th class="p-3">No.</th><th class="p-3">Exam Title</th><th class="p-3">Course</th><th class="p-3">Question Text</th><th class="p-3 text-emerald-600">Correct Answer</th></tr>
+                                                            </thead>
+                                                            <tbody class="divide-y dark:divide-gray-700">
+                                                                {getAllQuestions().map((q,i)=>(
+                                                                    <tr key={i} class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                                        <td class="p-3 font-mono">{i+1}</td>
+                                                                        <td class="p-3 font-bold text-brand-600">{q.examTitle}</td>
+                                                                        <td class="p-3">{q.course}</td>
+                                                                        <td class="p-3 whitespace-normal min-w-[200px]">{q.question}</td>
+                                                                        <td class="p-3 font-bold text-emerald-600">{q.correct}</td>
+                                                                    </tr>
+                                                                ))}
+                                                                {getAllQuestions().length===0 && <tr><td colSpan="5" class="p-4 text-center">No questions found in any exam.</td></tr>}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ) : (
+                                                    renderReportTable()
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* MESSAGES / ALERTS */}
+                                        {activeAdminMenu === 'messages' && (
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm">
+                                                    <h3 class="font-bold mb-4 border-b pb-2 text-rose-600"><i class="fa-solid fa-file-invoice-dollar"></i> Fee Dues Reminders</h3>
+                                                    <textarea rows="5" value={msgTemplate} onChange={e=>setMsgTemplate(e.target.value)} class="w-full p-3 border rounded text-xs dark:bg-gray-700 dark:border-gray-600 mb-2"></textarea>
+                                                    <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                                        {getDueStudents().map(s => (
+                                                            <div key={s.mobile} class="flex justify-between items-center bg-rose-50 dark:bg-rose-900/20 p-3 rounded-lg border border-rose-100 dark:border-rose-800">
+                                                                <div><p class="font-bold text-sm">{s.name}</p><p class="text-xs text-rose-500 font-bold mt-1">Due: ₹{(s.totalFee||0)-(s.paidFee||0)}</p></div>
+                                                                <button onClick={()=>sendWhatsApp(s)} class="bg-emerald-500 hover:bg-emerald-600 text-white w-10 h-10 rounded-full shadow transition"><i class="fa-brands fa-whatsapp text-lg"></i></button>
+                                                            </div>
+                                                        ))}
+                                                        {getDueStudents().length===0 && <p class="text-sm text-gray-500 text-center py-4">No pending dues.</p>}
+                                                    </div>
+                                                </div>
+                                                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm">
+                                                    <h3 class="font-bold mb-4 border-b pb-2 text-amber-500"><i class="fa-solid fa-cake-candles"></i> Birthday Wishes</h3>
+                                                    <textarea rows="5" value={birthdayMsgTemplate} onChange={e=>setBirthdayMsgTemplate(e.target.value)} class="w-full p-3 border rounded text-xs dark:bg-gray-700 dark:border-gray-600 mb-2"></textarea>
+                                                    <p class="text-[10px] text-gray-500 mb-3">Tags available: [Name]</p>
+                                                    <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                                        {getUpcomingBirthdays().map(u => (
+                                                            <div key={u.mobile} class="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-100 dark:border-amber-800">
+                                                                <div><p class="font-bold text-sm">{u.name}</p><p class="text-xs text-amber-600 font-bold mt-1">{u.daysUntil===0?'Today!':`In ${u.daysUntil} Days`}</p></div>
+                                                                <button onClick={()=>sendBirthdayWhatsApp(u)} class="bg-emerald-500 hover:bg-emerald-600 text-white w-10 h-10 rounded-full shadow transition"><i class="fa-brands fa-whatsapp text-lg"></i></button>
+                                                            </div>
+                                                        ))}
+                                                        {getUpcomingBirthdays().length===0 && <p class="text-sm text-gray-500 text-center py-4">No birthdays in next 7 days.</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* LIBRARY GRID ONLY */}
+                                        {activeAdminMenu === 'library' && (
+                                            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm">
+                                                <div class="flex justify-between items-center mb-6 border-b dark:border-gray-700 pb-3">
+                                                    <h3 class="text-xl font-bold"><i class="fa-solid fa-chair text-amber-500 mr-2"></i> Library Seating Grid</h3>
+                                                    <button onClick={()=>{const data=librarySeats.map(s=>{const o=users.find(u=>u.seatNumber===s); return {"Seat":s,"Status":o?"Allocated":"Empty","Name":o?o.name:"-","Mobile":o?o.mobile:"-"}}); downloadGenericReport(data,"Library Seats");}} class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md"><i class="fa-solid fa-download"></i> Export Layout</button>
+                                                </div>
+                                                <div class="grid grid-cols-5 md:grid-cols-10 gap-2">
+                                                    {librarySeats.map(seat => {
+                                                        const occupier = users.find(u => u.seatNumber === seat);
+                                                        return (
+                                                            <div key={seat} onClick={() => setAdminSeatModal({seatNumber: seat, occupier})} class={`p-3 border rounded-xl text-center cursor-pointer transition transform hover:scale-105 shadow-sm ${occupier ? 'bg-rose-50 border-rose-300 dark:bg-rose-900/30' : 'bg-emerald-50 border-emerald-300 dark:bg-emerald-900/30'}`}>
+                                                                <p class="font-black text-sm">{seat}</p>
+                                                                {occupier && <p class="text-[9px] truncate text-rose-700 dark:text-rose-400 font-bold mt-1" title={occupier.name}>{occupier.name.split(' ')[0]}</p>}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* SETTINGS */}
+                                        {activeAdminMenu === 'settings' && (
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm space-y-4">
+                                                    <h3 class="text-lg font-bold border-b pb-2"><i class="fa-solid fa-window-maximize text-indigo-500"></i> Edit App Settings</h3>
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray-500 mb-1">Brand Logo</label>
+                                                        <div class="flex items-center gap-4 mb-2">
+                                                            <div class="w-16 h-16 border rounded-xl bg-gray-50 flex items-center justify-center p-1"><img src={appSettings.logo} onError={handleImageError} class="max-h-full max-w-full"/></div>
+                                                            <input type="file" accept="image/*" onChange={handleSiteLogoUpload} class="text-xs text-gray-500"/>
+                                                        </div>
+                                                    </div>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Main App Title</label><input type="text" value={appSettings.title} onChange={e=>setAppSettings({...appSettings, title:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Physical Address</label><input type="text" value={appSettings.address} onChange={e=>setAppSettings({...appSettings, address:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Contact Numbers</label><input type="text" value={appSettings.phone} onChange={e=>setAppSettings({...appSettings, phone:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Highlight Marquee (Top Bar)</label><input type="text" value={appSettings.marquee} onChange={e=>setAppSettings({...appSettings, marquee:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                    <button onClick={saveAppSettings} class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow mt-2">Save Layout Settings</button>
+                                                </div>
+
+                                                <div class="space-y-6">
+                                                    {/* Course Manager */}
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm">
+                                                        <h3 class="text-lg font-bold border-b pb-2 mb-4"><i class="fa-solid fa-book text-brand-500"></i> Course Details</h3>
+                                                        <div class="grid grid-cols-2 gap-2 mb-4">
+                                                            <input type="text" value={newCourse.name} onChange={e=>setNewCourse({...newCourse, name:e.target.value})} placeholder="Course Name" class="p-2 border rounded-lg text-xs dark:bg-gray-700"/>
+                                                            <input type="number" value={newCourse.fee} onChange={e=>setNewCourse({...newCourse, fee:e.target.value})} placeholder="Total Fee (₹)" class="p-2 border rounded-lg text-xs dark:bg-gray-700"/>
+                                                            <input type="text" value={newCourse.code} onChange={e=>setNewCourse({...newCourse, code:e.target.value})} placeholder="Validation Code" class="p-2 border rounded-lg text-xs dark:bg-gray-700"/>
+                                                            <div class="flex items-center gap-1 text-xs font-bold text-gray-600 dark:text-gray-300"><input type="checkbox" checked={newCourse.requireCode} onChange={e=>setNewCourse({...newCourse, requireCode:e.target.checked})}/> Code Required to Register</div>
+                                                            <button onClick={handleAddCourse} class="col-span-2 bg-brand-600 text-white font-bold px-4 py-2 rounded-lg text-sm shadow">Add / Override Course</button>
+                                                        </div>
+                                                        <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                                            {courses.map(c => (
+                                                                <div key={c.name} class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 p-3 rounded-lg text-xs font-bold">
+                                                                    <span>{c.name} <span class="text-emerald-600">(₹{c.fee||0})</span> {c.requireCode && <span class="text-rose-500 px-1 ml-1 bg-rose-100 rounded">Lock: {c.code}</span>}</span>
+                                                                    <div class="flex gap-2">
+                                                                        <button onClick={()=>editCourseForm(c)} class="text-indigo-500 hover:text-indigo-700"><i class="fa-solid fa-pen"></i></button>
+                                                                        <button onClick={()=>handleDeleteCourse(c.name)} class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Admin Credentials */}
+                                                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border dark:border-gray-700 shadow-sm">
+                                                        <h3 class="text-lg font-bold border-b pb-2 mb-4"><i class="fa-solid fa-user-shield text-emerald-500"></i> Admin Access Profile</h3>
+                                                        <div class="space-y-3">
+                                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">Admin User ID</label><input type="text" value={adminProfileEdit.adminId} onChange={e=>setAdminProfileEdit({...adminProfileEdit, adminId:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">Admin Password</label><input type="text" value={adminProfileEdit.adminPass} onChange={e=>setAdminProfileEdit({...adminProfileEdit, adminPass:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                                            <button onClick={saveAdminProfile} class="w-full bg-emerald-600 hover:bg-emerald-700 transition text-white font-bold py-2 rounded-xl shadow">Update System Credentials</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* EXPORT DATA TAB */}
+                                        {activeAdminMenu === 'export' && (
+                                            <div class="bg-white dark:bg-gray-800 p-10 rounded-2xl border dark:border-gray-700 shadow-sm text-center">
+                                                <i class="fa-solid fa-database text-6xl text-brand-500 mb-6 opacity-80"></i>
+                                                <h3 class="text-2xl font-black mb-8 text-gray-800 dark:text-white">Database Backup & Export Center</h3>
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                                                    <button onClick={()=>{const d=users.filter(u=>u.role==='student'); downloadGenericReport(d, "All_Students_Data");}} class="p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
+                                                        <i class="fa-solid fa-users text-4xl text-indigo-500 mb-3 group-hover:scale-110 transition-transform"></i><p class="font-bold text-gray-700 dark:text-gray-200">Export All Students</p>
+                                                    </button>
+                                                    <button onClick={()=>{downloadGenericReport(attempts, "All_Exam_Records");}} class="p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
+                                                        <i class="fa-solid fa-file-contract text-4xl text-emerald-500 mb-3 group-hover:scale-110 transition-transform"></i><p class="font-bold text-gray-700 dark:text-gray-200">Export Exam Results</p>
+                                                    </button>
+                                                    <button onClick={()=>{downloadGenericReport(payments, "All_Payments_Log");}} class="p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition group">
+                                                        <i class="fa-solid fa-indian-rupee-sign text-4xl text-amber-500 mb-3 group-hover:scale-110 transition-transform"></i><p class="font-bold text-gray-700 dark:text-gray-200">Export Fee Database</p>
+                                                    </button>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-10">Data will be exported directly as .xlsx files compatible with MS Excel.</p>
+                                            </div>
+                                        )}
+
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer */}
+                    {currentPage !== 'admin-dashboard' && (
+                        <footer class="bg-gray-900 text-gray-400 text-center py-6 mt-auto">
+                            <div class="container mx-auto px-4 text-xs space-y-2"><p class="font-bold text-gray-300">© 2026 {appSettings.title}</p><p>Website Developer: Virendra Singh Sisodiya | Mobile: 8949538179</p></div>
+                        </footer>
+                    )}
+                    
+                    {/* ---- ABSOLUTE ROOT LEVEL MODALS ---- */}
+                    
+                    {editingStudent && (
+                        <div class="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-4">
+                            <div class="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+                                <div class="flex justify-between items-center border-b pb-3 mb-4"><h3 class="text-xl font-bold">Edit Student</h3><button onClick={()=>setEditingStudent(null)} class="text-gray-500 hover:text-rose-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="text-xs font-bold text-gray-500">Name</label><input type="text" value={editingStudent.name} onChange={e=>setEditingStudent({...editingStudent, name:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                    <div><label class="text-xs font-bold text-gray-500">Father Name</label><input type="text" value={editingStudent.fatherName} onChange={e=>setEditingStudent({...editingStudent, fatherName:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                    <div><label class="text-xs font-bold text-gray-500">WhatsApp (ID)</label><input type="text" value={editingStudent.mobile} disabled class="w-full p-2 border rounded text-sm bg-gray-100 dark:bg-gray-600 text-gray-400 cursor-not-allowed"/></div>
+                                    <div><label class="text-xs font-bold text-gray-500">Password</label><input type="text" value={editingStudent.password} onChange={e=>setEditingStudent({...editingStudent, password:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"/></div>
+                                    <div><label class="text-xs font-bold text-gray-500">Course</label><select value={editingStudent.course} onChange={e=>setEditingStudent({...editingStudent, course:e.target.value})} class="w-full p-2 border rounded text-sm dark:bg-gray-700">{courses.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</select></div>
+                                    <div><label class="text-xs font-bold text-gray-500">Account Status</label><select value={editingStudent.active} onChange={e=>setEditingStudent({...editingStudent, active:Number(e.target.value)})} class="w-full p-2 border rounded text-sm dark:bg-gray-700"><option value="1">Active</option><option value="0">Inactive</option></select></div>
+                                    <div><label class="text-xs font-bold text-gray-500 text-brand-500">Special Discount (₹)</label><input type="number" value={editingStudent.discount || 0} onChange={e=>setEditingStudent({...editingStudent, discount: Number(e.target.value)})} class="w-full p-2 border-2 border-brand-300 rounded text-sm dark:bg-gray-700"/></div>
+                                    <div></div>
+                                </div>
+                                <div class="mt-6 flex justify-end gap-3"><button onClick={()=>setEditingStudent(null)} class="px-4 py-2 bg-gray-200 text-gray-800 rounded font-bold">Cancel</button><button onClick={handleSaveStudentEdit} class="px-6 py-2 bg-brand-600 text-white rounded font-bold">Save Changes</button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {feeModal && (
+                        <div class="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-4">
+                            <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 border dark:border-gray-700">
+                                <h3 class="text-lg font-bold border-b pb-2 mb-4">Collect Fee: {feeModal.name}</h3>
+                                <div class="flex justify-between text-sm mb-4"><span>Final Fee: ₹{feeModal.totalFee||0}</span><span class="text-rose-500 font-bold">Due: ₹{(feeModal.totalFee||0)-(feeModal.paidFee||0)}</span></div>
+                                <form onSubmit={handleCollectFee} class="space-y-4">
+                                    <input type="number" required placeholder="Amount Receiving" value={feeAmount} onChange={e=>setFeeAmount(e.target.value)} class="w-full p-3 border-2 border-emerald-200 rounded-xl text-lg font-bold dark:bg-gray-700"/>
+                                    <select value={feeMode} onChange={e=>setFeeMode(e.target.value)} class="w-full p-3 border rounded-xl text-sm dark:bg-gray-700"><option>Cash</option><option>UPI/Online</option><option>Bank Transfer</option></select>
+                                    <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md">Confirm Payment</button>
+                                </form>
+                                <button onClick={()=>setFeeModal(null)} class="w-full mt-3 bg-gray-200 text-gray-800 font-bold py-3 rounded-xl">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {editFeeModal && (
+                        <div class="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-4">
+                            <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 border dark:border-gray-700">
+                                <h3 class="text-lg font-bold border-b pb-2 mb-4">Edit Fee Structure: {editFeeModal.name}</h3>
+                                <form onSubmit={handleSaveEditFee} class="space-y-4">
+                                    <div><label class="text-xs font-bold text-gray-500">Base Course Fee (₹)</label><input type="number" required value={editFeeModal.baseFee || editFeeModal.totalFee} onChange={e=>setEditFeeModal({...editFeeModal, baseFee: Number(e.target.value)})} class="w-full p-3 border rounded-xl text-sm dark:bg-gray-700" disabled/></div>
+                                    <div><label class="text-xs font-bold text-brand-500">Discount Amount (₹)</label><input type="number" required value={editFeeModal.discount || 0} onChange={e=>setEditFeeModal({...editFeeModal, discount: Number(e.target.value)})} class="w-full p-3 border-2 border-brand-300 rounded-xl text-sm font-bold dark:bg-gray-700"/></div>
+                                    <div><label class="text-xs font-bold text-gray-500">Already Paid Amount (₹)</label><input type="number" required value={editFeeModal.paidFee} onChange={e=>setEditFeeModal({...editFeeModal, paidFee: Number(e.target.value)})} class="w-full p-3 border rounded-xl text-sm font-bold dark:bg-gray-700 text-emerald-600"/></div>
+                                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl">Force Update Fee</button>
+                                </form>
+                                <button onClick={()=>setEditFeeModal(null)} class="w-full mt-3 bg-gray-200 text-gray-800 font-bold py-3 rounded-xl">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {adminSeatModal && (
+                        <div class="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-4">
+                            <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 border dark:border-gray-700">
+                                <h3 class="text-lg font-bold border-b pb-2 mb-4">Manage Seat: <span class="text-brand-600">{adminSeatModal.seatNumber}</span></h3>
+                                <form onSubmit={adminAssignSeat} class="space-y-3">
+                                    <div class="flex justify-center gap-4 text-sm font-bold border-b pb-3 mb-2">
+                                        <label class="cursor-pointer"><input type="radio" name="stype" checked={!adminSeatModal.isManual} onChange={()=>setAdminSeatModal({...adminSeatModal, isManual:false, manualName: ''})} class="mr-1"/> Student</label>
+                                        <label class="cursor-pointer"><input type="radio" name="stype" checked={adminSeatModal.isManual} onChange={()=>setAdminSeatModal({...adminSeatModal, isManual:true, manualName: adminSeatModal.occupier?.name || ''})} class="mr-1"/> Custom Name</label>
+                                    </div>
+                                    {!adminSeatModal.isManual ? (
+                                        <select required onChange={e=>setAdminSeatModal({...adminSeatModal, selectedMobile: e.target.value})} class="w-full p-2.5 border rounded-lg text-sm dark:bg-gray-700">
+                                            <option value="">Select Student...</option>
+                                            {users.filter(u=>u.role==='student' && (!u.seatNumber || u.seatNumber === adminSeatModal.seatNumber)).map(u=><option key={u.mobile} value={u.mobile}>{u.name} ({u.course})</option>)}
+                                        </select>
+                                    ) : (
+                                        <input type="text" required value={adminSeatModal.manualName || ''} placeholder="Enter Name Manually" onChange={e=>setAdminSeatModal({...adminSeatModal, manualName: e.target.value})} class="w-full p-2.5 border rounded-lg text-sm dark:bg-gray-700"/>
+                                    )}
+                                    <input type="date" required value={adminSeatModal.joiningDate || ''} onChange={e=>setAdminSeatModal({...adminSeatModal, joiningDate: e.target.value})} class="w-full p-2.5 border rounded-lg text-sm dark:bg-gray-700"/>
+                                    <div class="flex gap-2 mt-4">
+                                        <button type="submit" class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md">Save Seat</button>
+                                        {adminSeatModal.occupier && <button type="button" onClick={(e)=>{e.preventDefault(); adminFreeSeat(adminSeatModal.occupier.mobile);}} class="flex-1 bg-rose-500 text-white font-bold py-3 rounded-xl shadow-md">Free Up</button>}
+                                    </div>
+                                </form>
+                                <button onClick={()=>setAdminSeatModal(null)} class="w-full mt-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-xl">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root')); root.render(<App />);
+    </script>
+</body>
+</html>
